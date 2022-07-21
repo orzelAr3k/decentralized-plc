@@ -2,6 +2,8 @@
   "$schema": "./node_modules/nx/schemas/workspace-schema.json",
   "version": 2,
   "projects": {
+    "api": "apps/api",
+    "ng-gun": "libs/ng-gun",
     "shell": "apps/shell",
     "shell-e2e": "apps/shell-e2e"
   }
