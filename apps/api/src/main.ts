@@ -1,77 +1,82 @@
+/* --- imports --- */
+import { EventEmitter } from 'node:events';
 import * as express from 'express';
-import { Server } from 'socket.io';
-import Gun from 'gun'
+import { S7Endpoint, S7ItemGroup } from '@st-one-io/nodes7';
+import io from './app/socket';
+import { configDB, logDB } from './app/mongodb';
+import { gun, device, sea, addPeers, deletePeers } from './app/gundb';
+import Gun from 'gun/gun';
+/* ---------------*/
 
-const app = express();
-const io = new Server(3000, {
-  cors: { origin: "http://localhost:4200" }
-});
-const gun = Gun();
-const user = gun.user();
+/* --- global variable --- */
+let configDevice; 
+let globalSocket;
+let plc;
 
-app.get('/api', (req, res) => {
-  res.send({ message: 'Welcome to api!' });
-});
+
+/* --- emiters --- */
+const fetchDataDevices = new EventEmitter();
+
+// fetchDataDevices.emit('getData');
+
+// const app = express();
+// app.get('/api', (req, res) => {
+  //   res.send({ message: 'Welcome to api!' });
+  // });
+  
+  // const PORT = process.env.PORT || 3333;
+  // const server = app.listen(PORT, () => {
+    //   console.log(`Listening at http://localhost:${PORT}/api`);
+    // });
+    // server.on('error', console.error);
+    
+
+
 
 io.on('connection', (socket) => {
-  console.log(socket.id);
-
-  socket.on('login', login);
-  socket.on('signin', createAccount);
-})
-
-const port = process.env.port || 3333;
-const server = app.listen(port, () => {
-  console.log(`Listening at http://localhost:${port}/api`);
+  globalSocket = socket;
+  socket.on('device:create', createDeviceProfile);
+  socket.on('device:delete', deleteDevices);
 });
-server.on('error', console.error);
 
 
-
-async function createAccount(login: string, password: string, callback) {
-  user.create(login, password, (ack) => {
-    if ("ok" in ack && ack.ok === 0) return callback({ login: login, pub: ack.pub });
-    else if("err" in ack) return callback({ error: ack.err});
-  }); 
-}
-
-function login(login, password, callback) {
-  user.auth(login, password, (at) => {
-    if ("ack" in at) return callback({ login: login })
-    else if ("err" in at) return callback({ error: at.err });
-  });
-} 
-
-function logout(callback) {
-  user.leave();
-}
-
-// function generateCertificate() {
+async function createDeviceProfile(deviceName: string, host: string, rack: number, slot: number, cb?: () => void) {
+  try {
+    plc = await new S7Endpoint({ host: host, rack: rack, slot: slot });
   
-// }
+    if (!configDevice) {
+      await configDB.insertOne({ host: host, rack: rack, slot: slot, name: deviceName, ports: [], updateRate: undefined });
+      configDevice = await configDB.findOne({});
+    }
 
+    device.create(configDevice._id.toString(), configDevice._id.toString()).then(ack => {
+      if (ack.ok === 0) {
+          gun.user(ack.pub).once(async (d) => {
+            const gunDevice = await Gun().get(configDevice._id.toString()).put({ pub: d.pub, epub: d.epub, host: host, rack: rack, slot: slot, name: deviceName, ports: null, updateRate: null });
+            await gun.get('DEVICES').set(gunDevice); 
+          });
+      } else {
+          console.log(ack.err);
+      }
+    }); 
+  } catch(error) {
+    console.log(error);
+  }
+}
 
+async function authDevices() {
+  device.auth(configDevice._id.toString(), configDevice._id.toString());
+}
 
+async function deleteDevices(cb?: () => void) {
+  device.delete(configDevice._id.toString(), configDevice._id.toString(), (d) => {
+    console.log(d);
+  });
+}
 
-// konfiguracja sterownika
-/*
-zalogowanie lub utworzenie konta
+// sterownik plc
 
-utworzenie nowego profilu - zapiis do bazy danych
-
- */
-
-
-// dodanie peerow
-
-// function addPeers(addr: string) {
-
-// }
-
-
-// sterownik plc 
-
-// let plc;
+//const PLC = createDeviceProfile()
 // const itemGroup = new S7ItemGroup(plc);
 // const vars: Record<string, string> = {};
 
@@ -80,23 +85,9 @@ utworzenie nowego profilu - zapiis do bazy danych
 //   TEST2: 'M1.1', 		// Bit at M1.1
 // }
 
-// function createDeviceProfile(deviceName: string, host: string, rack: number, slot: number) {
-//   plc = new S7Endpoint({ host: host, rack: rack, slot: slot });
-
-
-//   // gun.user dodać dla usera konfiguracje
-//   gun.get('USERS')
-
-//   // gun.list wszystkich urządzeń w sieci
-//   const device: Device = { name: deviceName, }
-//   gun.get('DEVICES').set()
-
-// }
-
-
 // function addNewVar(name: 'string', port: 'string'): void {
 //   vars[name] = port;
-// } 
+// }
 
 // function deleteVar(name): void {
 //   delete vars[name];
@@ -114,3 +105,23 @@ utworzenie nowego profilu - zapiis do bazy danych
 
 // 	// await plc.disconnect(); 	//clean disconnection
 // });
+
+
+
+(async () => {
+  configDevice = await configDB.findOne({}); //.then((config) => configDevice = config);
+  if (configDevice) await authDevices();
+  // await createDeviceProfile('PLC', '192.168.1.1', 1, 1);
+  // await deleteDevices();
+})();
+
+
+gun.on('auth', () => {
+  console.log("Urządzenie działa");
+
+
+
+
+
+
+});

@@ -8,7 +8,7 @@ import Sea from 'gun/sea';
 export class NgGunService {
   gun = Gun();
   sea = Sea;
-  user = this.gun.user();
+  user = this.gun.user().recall({ sessionStorage: true });
 
   constructor() { }
 }

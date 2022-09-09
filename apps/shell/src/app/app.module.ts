@@ -10,10 +10,11 @@ import { NgGunModule } from '@decentralized-plc/ng-gun';
 
 import { AppComponent } from './app.component';
 import { LoginComponent } from './login/login.component';
+import { SigninComponent } from './signin/signin.component';
 
 const config: SocketIoConfig = { url: 'http://localhost:3000', options: {} };
 @NgModule({
-  declarations: [AppComponent, LoginComponent],
+  declarations: [AppComponent, LoginComponent, SigninComponent],
   imports: [
     BrowserModule,
     FormsModule,

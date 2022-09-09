@@ -1,17 +1,15 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { NgGunService } from '@decentralized-plc/ng-gun';
 
 @Component({
-  selector: 'login-page',
+  selector: 'signin-page',
   template: `
     <div class="relative bg-fixed bg-cover">
       <video
         autoplay
         muted
         loop
-        oncanplay="this.play()" 
-        onloadedmetadata="this.muted = true"
         id="myVideo"
         class="fixed w-screen h-screen object-cover"
       >
@@ -25,7 +23,7 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
     <div class="relative hero min-h-screen">
       <div class="hero-content flex-col lg:flex-row-reverse">
         <div class="flex-shrink-0 w-full text-center lg:text-left ml-16">
-          <h1 class="text-5xl font-bold text-white">Zaloguj się!</h1>
+          <h1 class="text-5xl font-bold text-white">Załóż konto!</h1>
           <p class="py-6 text-white">
             Zdecentralizowana brama dla urządzeń IOT
           </p>
@@ -51,23 +49,18 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
                 type="password"
                 placeholder="Hasło"
                 class="input input-bordered"
-                (keydown.enter)="login()"
                 [(ngModel)]="password"
+                (keydown.enter)="signin()"
               />
-              <label class="label">
-                <a href="#" class="label-text-alt link link-hover"
-                  >Zapomniałeś hasła?</a
-                >
-              </label>
             </div>
             <div class="form-control mt-6">
-              <button class="btn btn-primary" (click)="login()">
-                Zaloguj się
+              <button class="btn btn-primary" (click)="signin()">
+                Załóż konto
               </button>
             </div>
             <label class="label">
-              <span class="label-text-alt">Nie masz jeszcze konta?</span>
-              <a routerLink="/signin" class="link link-hover">Załóż konto</a>
+              <span class="label-text-alt">Masz już konto?</span>
+              <a routerLink="/login" class="link link-hover">Zaloguj się</a>
             </label>
           </div>
         </div>
@@ -75,18 +68,26 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
     </div>
   `,
 })
-export class LoginComponent implements OnInit {
+export class SigninComponent implements OnInit {
   name = '';
   password = '';
 
-  constructor(private ngGun: NgGunService, private router: Router, private changeDetectorRef: ChangeDetectorRef) {}
+  constructor(private ngGun: NgGunService, private router: Router) {}
 
   ngOnInit(): void {
-    this.changeDetectorRef.detectChanges();
+    console.log(this.ngGun.user.is);
   }
 
-  async login() {
-    await this.ngGun.user.auth(this.name, this.password);
-    await this.router.navigate(['/shell']);
+  signin() {
+    console.log(this.name);
+    console.log(this.password);
+
+    try {
+      this.ngGun.user.create(this.name, this.password, () =>
+        this.router.navigate(['/login'])
+      );
+    } catch (err) {
+      console.log(err);
+    }
   }
 }
