@@ -6,6 +6,7 @@ import io from './app/socket';
 import { configDB, logDB } from './app/mongodb';
 import { gun, device, sea, addPeers, deletePeers } from './app/gundb';
 import Gun from 'gun/gun';
+import { userInfo } from 'node:os';
 /* ---------------*/
 
 /* --- global variable --- */
@@ -68,10 +69,11 @@ async function authDevices() {
   device.auth(configDevice._id.toString(), configDevice._id.toString());
 }
 
-async function deleteDevices(cb?: () => void) {
-  device.delete(configDevice._id.toString(), configDevice._id.toString(), (d) => {
-    console.log(d);
-  });
+async function deleteDevices(cb?: (res: string) => void) {
+  // device.delete(configDevice._id.toString(), configDevice._id.toString(), (d) => {
+  //   console.log(d);
+  // });
+  return cb('Usunięto urządzenie!')
 }
 
 // sterownik plc
@@ -106,22 +108,23 @@ async function deleteDevices(cb?: () => void) {
 // 	// await plc.disconnect(); 	//clean disconnection
 // });
 
+async function getDataFromDevice() {
+
+}
+
+async function putDataToDevice() {
+
+}
 
 
 (async () => {
   configDevice = await configDB.findOne({}); //.then((config) => configDevice = config);
   if (configDevice) await authDevices();
-  // await createDeviceProfile('PLC', '192.168.1.1', 1, 1);
-  // await deleteDevices();
 })();
 
 
 gun.on('auth', () => {
-  console.log("Urządzenie działa");
-
-
-
-
+  console.log("!!! Urządzenie działa !!!");
 
 
 });

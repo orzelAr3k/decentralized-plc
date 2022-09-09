@@ -27,8 +27,7 @@ export class DevicesComponent implements OnInit {
   device = false;
 
   constructor(private socket: Socket) {
-    this.socket.emit('message', 'test');
-    this.socket.on('data', (data: any) => console.log(data));
+    this.socket.emit('device:delete', (res: string) => console.log(res));
   }
 
   ngOnInit(): void {}
