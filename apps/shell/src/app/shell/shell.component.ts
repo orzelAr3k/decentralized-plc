@@ -19,7 +19,8 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
           <div class="flex-none hidden lg:block">
             <ul class="menu menu-horizontal rounded-box p-2">
               <!-- Navbar menu content here -->
-              <li><a routerLink="devices" routerLinkActive="active">Urządzenia</a></li>
+              <li><a routerLink="devices" routerLinkActive="active">Urządzenie</a></li>
+              <li><a routerLink="ports" routerLinkActive="active">Porty</a></li>
               <li><a routerLink="network" routerLinkActive="active">Sieć</a></li>
             </ul>
             <button class="btn" (click)="logout()">Wyloguj</button>
@@ -27,7 +28,7 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
         </div>
         <!-- Page content here -->
         <div class="flex">
-          <div class="container m-auto bg-slate-800">
+          <div class="container m-auto bg-slate-100">
             <router-outlet></router-outlet>
           </div>
         </div>
@@ -36,7 +37,8 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
         <label for="my-drawer-3" class="drawer-overlay"></label> 
         <ul class="menu p-4 overflow-y-auto w-80 bg-base-100">
           <!-- Sidebar content here -->
-          <li><a>Urządzenia</a></li>
+          <li><a>Urządzenie</a></li>
+          <li><a>Porty</a></li>          
           <li><a>Sieć</a></li>
         </ul>
       </div>

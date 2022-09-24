@@ -9326,6 +9326,13 @@ postcss@^8.2.13, postcss@^8.2.14, postcss@^8.3.5, postcss@^8.3.7, postcss@^8.4.1
     picocolors "^1.0.0"
     source-map-js "^1.0.2"
 
+powerseq@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/powerseq/-/powerseq-1.0.4.tgz#4cc751229d3765cb10af8922e6818e1756b7458d"
+  integrity sha512-xbelsiLY8WVi0W2OImMBLGwghC6KgEj2i2ymbrFrC7C0ng+LVF6hJ8CzHHmdWZ7a/mIPRqDLGLje/vLqR/3IeQ==
+  dependencies:
+    tslib "^1.9.0"
+
 prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/prelude-ls/-/prelude-ls-1.2.1.tgz#debc6489d7a6e6b0e7611888cec880337d316396"

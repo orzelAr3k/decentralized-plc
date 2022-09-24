@@ -8,16 +8,17 @@ export const sea = Sea;
 
 
 // dodanie peerow
-export function addPeers(addr: string): void {
+export function addPeers(addr: string, cb?: (res: string) => void): void {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const mesh = gun.back('opt.mesh'); // DAM
     // Ask local peer to connect to another peer.
     mesh.say({ dam: 'opt', opt: { peers: addr }});
+    return cb('Dodano peera!');
   }
   
 // usuniecie peerow
-export function deletePeers(addr: string): void {
+export function deletePeers(addr: string, cb?: (res: string) => void): void {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const mesh = gun.back('opt.mesh'); // DAM
@@ -27,9 +28,10 @@ export function deletePeers(addr: string): void {
     console.log(peers);
     const addrId = Object.keys(peers).find(id => peers[id] === addr);
     mesh.bye(addrId);
+    return cb('Usunięto peera!');
 }
 
 // generowanie certyfiaktu
 async function generateCertificate(deviceFrom, devicesTo, expiryTime): Promise<string> {
-  return await sea.certify(devicesTo, [], deviceFrom, null, {expiry: Gun.state()+(expiryTime)});
+  return await sea.certify(devicesTo, [], deviceFrom, null, { expiry: Gun.state()+(expiryTime) });
 }

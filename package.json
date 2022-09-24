@@ -27,6 +27,7 @@
     "gun-mongo": "^0.1.2",
     "mongodb": "^4.9.1",
     "ngx-socket-io": "^4.3.0",
+    "powerseq": "^1.0.4",
     "rxjs": "~7.4.0",
     "socket.io": "^4.5.1",
     "tslib": "^2.0.0",

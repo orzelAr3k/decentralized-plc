@@ -24,6 +24,6 @@ module.exports = {
   },
   plugins: [require('daisyui'), require('tailwind-scrollbar')],
   daisyui: {
-    themes: ['night'],
+    themes: ['cmyk', 'night'],
   },
 };
