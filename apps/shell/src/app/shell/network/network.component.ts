@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Socket } from 'ngx-socket-io';
 
 @Component({
   selector: 'decentralized-plc-network',
@@ -13,140 +14,55 @@ import { Component, OnInit } from '@angular/core';
                 <input type="checkbox" class="checkbox" />
               </label>
             </th>
-            <th>Name</th>
-            <th>Job</th>
+            <th>Nazwa</th>
+            <th>Adres IP</th>
             <th>Favorite Color</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <!-- row 1 -->
-          <tr>
-            <th>
-              <label>
-                <input type="checkbox" class="checkbox" />
-              </label>
-            </th>
-            <td>
-              <div class="flex items-center space-x-3">
-                <div class="avatar">
-                  <div class="mask mask-squircle w-12 h-12">
-                    <img src="/tailwind-css-component-profile-2@56w.png" alt="Avatar Tailwind CSS Component" />
+          <ng-container *ngFor="let device of devices">
+            <tr>
+              <th>
+                <label>
+                  <input type="checkbox" class="checkbox" />
+                </label>
+              </th>
+              <td>
+                <div class="flex items-center space-x-3">
+                  <!-- <div class="avatar">
+                    <div class="mask mask-squircle w-12 h-12">
+                      <img src="/tailwind-css-component-profile-2@56w.png" alt="Avatar Tailwind CSS Component" />
+                    </div>
+                  </div> -->
+                  <div>
+                    <div class="font-bold">{{ device }}</div>
+                    <div class="text-sm opacity-50">United States</div>
                   </div>
                 </div>
-                <div>
-                  <div class="font-bold">Hart Hagerty</div>
-                  <div class="text-sm opacity-50">United States</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              Zemlak, Daniel and Leannon
-              <br>
-              <span class="badge badge-ghost badge-sm">Desktop Support Technician</span>
-            </td>
-            <td>Purple</td>
-            <th>
-              <button class="btn btn-ghost btn-xs">details</button>
-            </th>
-          </tr>
-          <!-- row 2 -->
-          <tr>
-            <th>
-              <label>
-                <input type="checkbox" class="checkbox" />
-              </label>
-            </th>
-            <td>
-              <div class="flex items-center space-x-3">
-                <div class="avatar">
-                  <div class="mask mask-squircle w-12 h-12">
-                    <img src="/tailwind-css-component-profile-3@56w.png" alt="Avatar Tailwind CSS Component" />
-                  </div>
-                </div>
-                <div>
-                  <div class="font-bold">Brice Swyre</div>
-                  <div class="text-sm opacity-50">China</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              Carroll Group
-              <br>
-              <span class="badge badge-ghost badge-sm">Tax Accountant</span>
-            </td>
-            <td>Red</td>
-            <th>
-              <button class="btn btn-ghost btn-xs">details</button>
-            </th>
-          </tr>
-          <!-- row 3 -->
-          <tr>
-            <th>
-              <label>
-                <input type="checkbox" class="checkbox" />
-              </label>
-            </th>
-            <td>
-              <div class="flex items-center space-x-3">
-                <div class="avatar">
-                  <div class="mask mask-squircle w-12 h-12">
-                    <img src="/tailwind-css-component-profile-4@56w.png" alt="Avatar Tailwind CSS Component" />
-                  </div>
-                </div>
-                <div>
-                  <div class="font-bold">Marjy Ferencz</div>
-                  <div class="text-sm opacity-50">Russia</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              Rowe-Schoen
-              <br>
-              <span class="badge badge-ghost badge-sm">Office Assistant I</span>
-            </td>
-            <td>Crimson</td>
-            <th>
-              <button class="btn btn-ghost btn-xs">details</button>
-            </th>
-          </tr>
-          <!-- row 4 -->
-          <tr>
-            <th>
-              <label>
-                <input type="checkbox" class="checkbox" />
-              </label>
-            </th>
-            <td>
-              <div class="flex items-center space-x-3">
-                <div class="avatar">
-                  <div class="mask mask-squircle w-12 h-12">
-                    <img src="/tailwind-css-component-profile-5@56w.png" alt="Avatar Tailwind CSS Component" />
-                  </div>
-                </div>
-                <div>
-                  <div class="font-bold">Yancy Tear</div>
-                  <div class="text-sm opacity-50">Brazil</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              Wyman-Ledner
-              <br>
-              <span class="badge badge-ghost badge-sm">Community Outreach Specialist</span>
-            </td>
-            <td>Indigo</td>
-            <th>
-              <button class="btn btn-ghost btn-xs">details</button>
-            </th>
-          </tr>
+              </td>
+              <td>
+                Zemlak, Daniel and Leannon
+                <br>
+                <span class="badge badge-ghost badge-sm">Desktop Support Technician</span>
+              </td>
+              <td>Purple</td>
+              <th>
+                <button class="btn btn-ghost btn-xs">details</button>
+              </th>
+            </tr>
+            <tr *ngIf="">
+
+            </tr>
+          </ng-container>
         </tbody>
         <!-- foot -->
         <tfoot>
           <tr>
             <th></th>
-            <th>Name</th>
-            <th>Job</th>
+            <th>Nazwa</th>
+            <th>Adres IP</th>
             <th>Favorite Color</th>
             <th></th>
           </tr>
@@ -157,7 +73,15 @@ import { Component, OnInit } from '@angular/core';
   `,
 })
 export class NetworkComponent implements OnInit {
-  constructor() {}
+  devices = [];
+  expand;
+  selectedDevice;
+  
+  constructor(private socket: Socket) {}
 
-  ngOnInit(): void {}
+  async ngOnInit() {
+    // this.socket.emit('generateCertificate', '63374c8bc2cafd8e52e0420e', 1000, (certificate) => console.log(certificate));
+    this.socket.emit('allDevices:get', (devices) => this.devices = devices);
+    console.log(this.devices);
+  }
 }

@@ -1,27 +1,27 @@
-name: Docker Image CI
+# name: Docker Image CI
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
 
-jobs:
+# jobs:
 
-  build:
+#   build:
 
-    runs-on: ubuntu-latest
+#     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v3
-    - name: Checkout source code
+#     steps:
+#     - uses: actions/checkout@v3
+#     - name: Checkout source code
         
-    - uses: mr-smithers-excellent/docker-build-push@v5
-    - name: Build & push Docker image
-      with:
-        image: orzelar3k/decentralized-plc
-        registry: docker.io
-        tag: node-api
-        directory: ./apps/api
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+#     - uses: mr-smithers-excellent/docker-build-push@v5
+#     - name: Build & push Docker image
+#       with:
+#         image: orzelar3k/decentralized-plc
+#         registry: docker.io
+#         tag: node-api
+#         directory: ./apps/api
+#         username: ${{ secrets.DOCKER_USERNAME }}
+#         password: ${{ secrets.DOCKER_PASSWORD }}

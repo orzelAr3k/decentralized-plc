@@ -11,4 +11,4 @@ interface ConfigDeviceDto {
     name: string;
     ports: Array<PortDto>;
     updateRate: number;
-}   
+}

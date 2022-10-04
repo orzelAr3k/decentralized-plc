@@ -1,15 +1,14 @@
 /* --- imports --- */
 import { EventEmitter } from 'node:events';
 import * as express from 'express';
-import { S7Endpoint, S7ItemGroup, S7Connection } from '@st-one-io/nodes7';
+import { S7Endpoint, S7ItemGroup } from '@st-one-io/nodes7';
 import io from './app/socket';
-import { configDB, logDB } from './app/mongodb';
-import { gun, device, sea, addPeers, deletePeers } from './app/gundb';
+import { configDB, logDB, peersDB } from './app/mongodb';
+import { gun, device, sea, addPeer, deletePeer } from './app/gundb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Gun = require('gun/gun');
 import { ObjectId } from 'mongodb';
 import { toobject, pipe, map, entries, toarray } from 'powerseq'
-import { clearInterval } from 'node:timers';
 /* ---------------*/
 
 /* --- global variable --- */
@@ -54,6 +53,9 @@ io.on('connection', (socket) => {
   socket.on('device:addPorts', addPort);
   socket.on('device:deletePorts', deletePort);
   socket.on('device:delete', deleteDevices);
+  socket.on('portValue:put', putDataToDevice);
+  socket.on('generateCertificate', generateCertificate);
+  socket.on('allDevices:get', getAllDevices);
 
   socket.on("disconnect", async () => {
     globalSocket = undefined;
@@ -67,6 +69,13 @@ async function getDevice(cb?: (res: ConfigDeviceDto) => void) {
 }
 
 async function getDeviceStatus(socket) {
+}
+
+async function getAllDevices(cb?: (res: any) => void) {
+  let devices;
+  await gun.get('DEVICES').map().once(d => devices = d);
+
+  return cb(devices);
 }
 
 async function createDeviceProfile(deviceName: string, host: string, rack: number, slot: number, updateRate: number, cb?: (res: string | null) => void) {
@@ -86,9 +95,6 @@ async function createDeviceProfile(deviceName: string, host: string, rack: numbe
       console.log(ack.err);
     }
   }); 
-
-
-
   authEmmiter.emit('auth');
   return cb('Device added!');
 }
@@ -124,57 +130,72 @@ async function deleteDevices(cb?: (res: string) => void) {
 // }
 
 async function getPorts(cb?: (res: any) => void) {
-  return cb(pipe(entries(ports), map(p => ({ portName: p[0], port: p[1], value: null })), toarray()));
+  return cb(toobject(entries(ports), k => k[0], v => ({ port: v[1], value: null })));
 }
 
 async function addPort(portName: string, port: string,  cb?: (res: string) => void) {
   ports[portName] = port;
   configDB.updateOne({ _id: new ObjectId(configDevice._id)}, { $addToSet: { ports: { portName: portName, port: port } } });
+  gun.get('DEVICES').get(configDevice._id.toString()).get('ports').put(ports);
 	itemGroup.addItems(portName);
   return cb('Dodano port!');
 }
 
 async function deletePort(portName: string, cb?: (res: string) => void) {
-  configDB.updateOne({ _id: new ObjectId(configDevice._id)}, { $pull: { ports: { $elemMatch: { portName: portName }}}});
+  delete ports[portName];
+  configDB.updateOne({ _id: new ObjectId(configDevice._id)}, { $pull: { ports: { portName: portName }}});
   itemGroup.removeItems(portName);
+  device.get('memory').get(portName).put(null);
   return cb('Usunięto port!');
 }
 
-async function getDataFromDevice(cb: (res: any[]) => void) {
-
-  // return cb(res);
-}
-
-async function putDataToDevice(items: string[], values: any[]) {
-  itemGroup.writeItems(items, values);
+async function putDataToDevice(item: string, value: any, cb?: (res: string) => void) {
+  itemGroup.writeItems(item, value);
+  return cb('Przesłano wartość');
 }
 
 async function putDataToDeviceFromDB(deviceId: string) {
-
+  device.get('fromDevices').get(deviceId).get('ports').on(d => console.log(d));
 }
 
 async function getDataFromDeviceToDB(deviceId: string) {
 
 }
 
-async function sendDataToOtherDevice() {
-
+async function sendDataToOtherDevice(deviceId: string, items: any) {
+  const certificate = gun.get('certificates').get(deviceId).get(configDevice._id.toString());
+  if (certificate) gun.get(deviceId).get('fromDevice').get(configDevice._id.toString()).get('ports').put(items, {opt: {cert: certificate}})
+  else throw Error('Certificate not found');
 }
 
 async function readDataFromOtherDevice() {
 
 }
 
+async function addPeers(addr: string, cb?: (res: string) => void) { 
+  addPeer(addr);
+  peersDB.updateMany({ host: addr }, { $setOnInsert: { host: addr }}, { upsert: true });
+  return cb('Peer added!');
+};
+
+async function deletePeers(addr: string, cb?: (res: string) => void) {
+  deletePeer(addr);
+  peersDB.deleteOne({ host: addr });
+  return cb('Peer deleted!');
+};
+
 async function generateCertificate(sender: string, expiryTime: number, cb: (res: any) => void) {
-  const senderP = await gun.get('DEVICES').get(sender).once();
-  const certificate = sea.certify([senderP.pub], {}, device, null, { expiry: expiryTime });
-  gun.get('certificates').get(configDevice._id).get(senderP.key).put(certificate);
-  return cb(certificate);
+  const senderP = await gun.get('DEVICES').get(sender);
+  const certificate = await sea.certify(senderP.epub, {"*": 'fromDevice'}, device._.sea, null, { expiry: expiryTime });
+  gun.get('certificates').get(configDevice._id).get(sender).put(certificate);
+  return cb(certificate); 
 }
 
 
 (async () => {
   configDevice = <ConfigDeviceDto> await configDB.findOne({});
+  const peers = await peersDB.find({}).project({ _id: 0, host: 1 }).toArray();
+  if (peers.length > 0) peers.forEach(peer => addPeer(peer.host));
   if (configDevice) await authDevices();
   
 })();
@@ -183,34 +204,33 @@ async function generateCertificate(sender: string, expiryTime: number, cb: (res:
 authEmmiter.on('auth', async () => {
   console.log("!!! Device working !!!");
 
-  gun.get('DEVICES').once(d => console.log(d));
+  // gun.get('DEVICES').once(d => console.log(d));
 
-  plc = await new S7Endpoint({ host: configDevice.host, rack: configDevice.rack, slot: configDevice.slot });
-  itemGroup = new S7ItemGroup(plc);
-  itemGroup.setTranslationCB(tag => ports[tag]);
-  itemGroup.addItems(Object.keys(ports));
+  // plc = await new S7Endpoint({ host: configDevice.host, rack: configDevice.rack, slot: configDevice.slot });
+  // itemGroup = new S7ItemGroup(plc);
+  // itemGroup.setTranslationCB(tag => ports[tag]);
+  // itemGroup.addItems(Object.keys(ports));
 
-  plc.on('error', e => {
-    if (globalSocket) globalSocket.emit('device:error', e);
-    console.log('PLC Error!', e)
-  });
-  plc.on('disconnect', () => {
-    if (globalSocket) globalSocket.emit('device:connect', false);
-    console.log('PLC Disconnect');
-  });
-  plc.on('connect', () => {
-    if (globalSocket) globalSocket.emit('device:connect', true);
-    console.log('PLC Connect')
+  // plc.on('error', e => {
+  //   if (globalSocket) globalSocket.emit('device:error', e);
+  //   console.log('PLC Error!', e)
+  // });
+  // plc.on('disconnect', () => {
+  //   if (globalSocket) globalSocket.emit('device:connect', false);
+  //   console.log('PLC Disconnect');
+  // });
+  // plc.on('connect', () => {
+  //   if (globalSocket) globalSocket.emit('device:connect', true);
+  //   console.log('PLC Connect')
 
-    intervals = setInterval(async () => {
-      const items = await itemGroup.readAllItems();
-      device.get('memory').put(items);
-      if (globalSocket) globalSocket.emit('device:readValue', pipe(entries(items), map((p: [string, string]) => ({ portName: p[0], port: p[1] })), toarray()));
-    }, configDevice.updateRate);
+  //   intervals = setInterval(async () => {
+  //     const items = await itemGroup.readAllItems();
+  //     const encryptedItems = await sea.encrypt(items, process.env.SECRET);
+  //     device.get('memory').put(encryptedItems);
+  //     if (globalSocket) globalSocket.emit('device:readValue', pipe(entries(items), map((p: [string, string]) => ({ portName: p[0], value: p[1] })), toarray()));
+  //   }, configDevice.updateRate);
 
-
-    // startInterval(configDevice.name, configDevice.updateRate, intervals);
-    // device.get('memory').on(d => console.log(d));
-  });
+  //   // device.get('memory').on(async d => console.log(await sea.decrypt(d, process.env.SECRET)));
+  // });
 });
 

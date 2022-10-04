@@ -9,3 +9,4 @@ client.connect((err, conn) => {
 const db = client.db('DIOT');
 export const configDB = db.collection('config');
 export const logDB = db.collection('logs');
+export const peersDB = db.collection('peers');

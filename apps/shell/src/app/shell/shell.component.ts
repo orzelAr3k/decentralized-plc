@@ -28,7 +28,7 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
         </div>
         <!-- Page content here -->
         <div class="flex">
-          <div class="container m-auto bg-slate-100">
+          <div class="container m-auto">
             <router-outlet></router-outlet>
           </div>
         </div>

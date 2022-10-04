@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
   template: `
    <div class='container h-92v flex'>
     <div class="m-auto">
-      <button class="btn modal-button" *ngIf="empty" (click)="showModal()"><label  for="my-modal">Dodaj urządzenie</label></button>
+      <div *ngIf="empty" (click)="showModal()"><label class="btn modal-button" for="my-modal">Dodaj urządzenie</label></div>
 
       <div class="hero" *ngIf="!empty">
         <div class="hero-content flex-col lg:flex-row">
