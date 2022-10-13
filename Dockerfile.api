@@ -1,0 +1,14 @@
+FROM node:16.17-alpine3.16
+
+# Create app directory
+WORKDIR /api
+
+# Bundle app source
+COPY /dist/apps/api .
+
+# Install app dependencies
+RUN yarn install
+
+EXPOSE 3333 3000
+
+CMD ["node", "main.js"]

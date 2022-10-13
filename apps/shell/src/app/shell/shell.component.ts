@@ -5,6 +5,7 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
 @Component({
   selector: 'shell-page',
   template: `
+    <!-- <certificate-modal class="fixed left-0 right-0 w-1/2 mx-auto z-10"></certificate-modal> -->
     <div class="drawer">
       <input id="my-drawer-3" type="checkbox" class="drawer-toggle" /> 
       <div class="drawer-content flex flex-col">
@@ -28,7 +29,7 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
         </div>
         <!-- Page content here -->
         <div class="flex">
-          <div class="container m-auto">
+          <div class="container m-auto mt-10">
             <router-outlet></router-outlet>
           </div>
         </div>

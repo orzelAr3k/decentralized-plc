@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { ShellComponent } from './shell.component';
 import { DevicesComponent } from './devices/devices.component';
 import { NetworkComponent } from './network/network.component';
+import { CertificateModalComponent } from './network/certificateModal.component';
 import { PortsComponent } from './ports/ports.component';
 
 @NgModule({
@@ -15,6 +16,7 @@ import { PortsComponent } from './ports/ports.component';
     ShellComponent,
     DevicesComponent,
     NetworkComponent,
+    CertificateModalComponent,
     PortsComponent,
   ],
   providers: [],

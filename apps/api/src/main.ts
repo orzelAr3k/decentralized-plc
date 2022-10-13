@@ -7,8 +7,11 @@ import { configDB, logDB, peersDB } from './app/mongodb';
 import { gun, device, sea, addPeer, deletePeer } from './app/gundb';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Gun = require('gun/gun');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('gun/lib/load.js')
+require('gun/lib/open.js')
 import { ObjectId } from 'mongodb';
-import { toobject, pipe, map, entries, toarray } from 'powerseq'
+import { toobject, pipe, map, entries, toarray, filter } from 'powerseq'
 /* ---------------*/
 
 /* --- global variable --- */
@@ -56,6 +59,7 @@ io.on('connection', (socket) => {
   socket.on('portValue:put', putDataToDevice);
   socket.on('generateCertificate', generateCertificate);
   socket.on('allDevices:get', getAllDevices);
+  socket.on('sendToOtherDevice', sendDataToOtherDevice);
 
   socket.on("disconnect", async () => {
     globalSocket = undefined;
@@ -72,10 +76,10 @@ async function getDeviceStatus(socket) {
 }
 
 async function getAllDevices(cb?: (res: any) => void) {
-  let devices;
-  await gun.get('DEVICES').map().once(d => devices = d);
-
-  return cb(devices);
+  gun.get('DEVICES').open(devices => {
+    globalSocket.emit('allDevices', pipe(entries(devices), filter(([id, device]) => !!device && configDevice ? id !== configDevice._id.toString() : false), map(([id, device]) => ({ id: id, device: device})), toarray()));
+  });
+  if (cb) return cb('Pobieranie listy urządzeń!');
 }
 
 async function createDeviceProfile(deviceName: string, host: string, rack: number, slot: number, updateRate: number, cb?: (res: string | null) => void) {
@@ -111,10 +115,12 @@ async function deleteDevices(cb?: (res: string) => void) {
   // device.leave()
   // device.delete(configDevice._id.toString(), configDevice._id.toString(), ack => console.log(ack));
   clearInterval(intervals);
+  ports = undefined;
   gun.get('DEVICES').get(configDevice._id.toString()).put(null);
   await configDB.deleteMany({});
   configDevice = undefined;
   await plc.disconnect();
+  itemGroup = undefined;
   return cb('Device deleted!');
 }
 
@@ -130,7 +136,7 @@ async function deleteDevices(cb?: (res: string) => void) {
 // }
 
 async function getPorts(cb?: (res: any) => void) {
-  return cb(toobject(entries(ports), k => k[0], v => ({ port: v[1], value: null })));
+  return cb(toobject(entries(ports || []), k => k[0], v => ({ port: v[1], value: null })));
 }
 
 async function addPort(portName: string, port: string,  cb?: (res: string) => void) {
@@ -154,23 +160,33 @@ async function putDataToDevice(item: string, value: any, cb?: (res: string) => v
   return cb('Przesłano wartość');
 }
 
-async function putDataToDeviceFromDB(deviceId: string) {
-  device.get('fromDevices').get(deviceId).get('ports').on(d => console.log(d));
+
+
+
+
+
+async function putDataToDeviceFromDB() {
+  device.get('fromDevices').get('ports').load(items => console.log(items));
 }
 
-async function getDataFromDeviceToDB(deviceId: string) {
+async function sendDataToOtherDevice(deviceId: string, portName: string, port: string) {
+  const certificate = await gun.get('certificates').get(deviceId).get(configDevice._id.toString()).then();
+  if (certificate) device.get('memory').on(async (d) => {
+    const devicePub = await gun.get('DEVICES').get(deviceId).get('pub').then();
+    const items = sea.encrypt(d, process.env.SECRET);
 
-}
-
-async function sendDataToOtherDevice(deviceId: string, items: any) {
-  const certificate = gun.get('certificates').get(deviceId).get(configDevice._id.toString());
-  if (certificate) gun.get(deviceId).get('fromDevice').get(configDevice._id.toString()).get('ports').put(items, {opt: {cert: certificate}})
+    gun.user(devicePub).get('fromDevice').get('ports').put({ portName: items[portName] }, { opt: { cert: certificate } })
+  })
   else throw Error('Certificate not found');
 }
 
 async function readDataFromOtherDevice() {
 
 }
+
+
+
+
 
 async function addPeers(addr: string, cb?: (res: string) => void) { 
   addPeer(addr);
@@ -187,7 +203,7 @@ async function deletePeers(addr: string, cb?: (res: string) => void) {
 async function generateCertificate(sender: string, expiryTime: number, cb: (res: any) => void) {
   const senderP = await gun.get('DEVICES').get(sender);
   const certificate = await sea.certify(senderP.epub, {"*": 'fromDevice'}, device._.sea, null, { expiry: expiryTime });
-  gun.get('certificates').get(configDevice._id).get(sender).put(certificate);
+  gun.get('certificates').get(configDevice._id.toString()).get(sender).put(certificate);
   return cb(certificate); 
 }
 
@@ -198,39 +214,44 @@ async function generateCertificate(sender: string, expiryTime: number, cb: (res:
   if (peers.length > 0) peers.forEach(peer => addPeer(peer.host));
   if (configDevice) await authDevices();
   
+  // gun.get('DEVICES').load(d => console.log(d));
+
+
+
 })();
 
 
 authEmmiter.on('auth', async () => {
   console.log("!!! Device working !!!");
+  // device.get('fromDevices').get('ports').on(d => console.log(d));
+  // gun.get('DEVICES').load(d => console.log(d));
 
-  // gun.get('DEVICES').once(d => console.log(d));
+  plc = await new S7Endpoint({ host: configDevice.host, rack: configDevice.rack, slot: configDevice.slot });
+  itemGroup = new S7ItemGroup(plc);
+  itemGroup.setTranslationCB(tag => ports[tag]);
+  itemGroup.addItems(Object.keys(ports));
 
-  // plc = await new S7Endpoint({ host: configDevice.host, rack: configDevice.rack, slot: configDevice.slot });
-  // itemGroup = new S7ItemGroup(plc);
-  // itemGroup.setTranslationCB(tag => ports[tag]);
-  // itemGroup.addItems(Object.keys(ports));
+  plc.on('error', e => {
+    if (globalSocket) globalSocket.emit('device:error', e);
+    console.log('PLC Error!', e)
+  });
+  plc.on('disconnect', () => {
+    if (globalSocket) globalSocket.emit('device:connect', false);
+    console.log('PLC Disconnect');
+  });
+  plc.on('connect', () => {
+    if (globalSocket) globalSocket.emit('device:connect', true);
+    console.log('PLC Connect')
 
-  // plc.on('error', e => {
-  //   if (globalSocket) globalSocket.emit('device:error', e);
-  //   console.log('PLC Error!', e)
-  // });
-  // plc.on('disconnect', () => {
-  //   if (globalSocket) globalSocket.emit('device:connect', false);
-  //   console.log('PLC Disconnect');
-  // });
-  // plc.on('connect', () => {
-  //   if (globalSocket) globalSocket.emit('device:connect', true);
-  //   console.log('PLC Connect')
+    intervals = setInterval(async () => {
+      const items = await itemGroup.readAllItems();
+      const encryptedItems = await sea.encrypt(items, process.env.SECRET);
+      device.get('memory').put(encryptedItems);
+      if (globalSocket) globalSocket.emit('device:readValue', pipe(entries(items), map((p: [string, string]) => ({ portName: p[0], value: p[1] })), toarray()));
+    }, configDevice.updateRate);
 
-  //   intervals = setInterval(async () => {
-  //     const items = await itemGroup.readAllItems();
-  //     const encryptedItems = await sea.encrypt(items, process.env.SECRET);
-  //     device.get('memory').put(encryptedItems);
-  //     if (globalSocket) globalSocket.emit('device:readValue', pipe(entries(items), map((p: [string, string]) => ({ portName: p[0], value: p[1] })), toarray()));
-  //   }, configDevice.updateRate);
-
-  //   // device.get('memory').on(async d => console.log(await sea.decrypt(d, process.env.SECRET)));
-  // });
+    putDataToDeviceFromDB();
+    // device.get('memory').on(async d => console.log(await sea.decrypt(d, process.env.SECRET)));
+  });
 });
 

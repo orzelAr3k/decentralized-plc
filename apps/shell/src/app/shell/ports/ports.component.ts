@@ -6,7 +6,7 @@ import { Enumerable, foreach  } from 'powerseq/enumerable';
 @Component({
   selector: 'decentralized-plc-ports',
   template: `
-    <nav>
+    <nav class="mb-6">
       <button class="btn modal-button" (click)="showModal()"><label  for="my-modal">Dodaj port</label></button>
     </nav>
     <div class="overflow-x-auto w-full">
@@ -52,7 +52,7 @@ import { Enumerable, foreach  } from 'powerseq/enumerable';
                 <br>
                 <span class="badge badge-ghost badge-sm">Desktop Support Technician</span>
               </td>
-              <td>{{ portsList[portName].value }}</td>
+              <td>{{ portsList[portName].value || '-' }}</td>
               <td>
                 <div class="flex content-between gap-4">
                   <input type="text" placeholder="Nowa wartość" class="input input-bordered input-sm w-full max-w-xs" [(ngModel)]="portNewValues[i]" (keydown.enter)="forceValue(portName, i)">

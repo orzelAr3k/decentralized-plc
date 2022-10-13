@@ -4,13 +4,13 @@ const Gun = require('gun');
 const Sea = require('gun/sea');
 import { peersDB, logDB } from './mongodb';
 
-export const gun = Gun({ peers: ['http://localhost:8000/gun'] });
+export const gun = Gun({ peers: ['http://localhost:5634/gun'] });
 export const device = gun.user();
 export const sea = Sea;
 
-const mesh = gun.back();
-/** set database default path  */
-mesh._.opt.file = '../radata';
+// const mesh = gun.back();
+// /** set database default path  */
+// mesh._.opt.file = '../radata';
 
 
 // dodanie peerow
