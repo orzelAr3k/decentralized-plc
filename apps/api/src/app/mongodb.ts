@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb';
 
-const client = new MongoClient("mongodb://mongo:27017");
+const client = new MongoClient("mongodb://127.0.0.1:27017");
 client.connect((err, conn) => {
     if(err) console.log(err);
     console.log('Connected to the configuration base!');

@@ -14,7 +14,7 @@ export const sea = Sea;
 
 
 // dodanie peerow
-export function addPeer(addr: string): void {
+export function addPeer(addr: any): void {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const mesh = gun.back('opt.mesh'); // DAM
@@ -23,7 +23,7 @@ export function addPeer(addr: string): void {
   }
   
 // usuniecie peerow
-export function deletePeer(addr: string): void {
+export function deletePeer(addr: any): void {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const mesh = gun.back('opt.mesh'); // DAM

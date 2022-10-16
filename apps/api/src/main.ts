@@ -50,7 +50,6 @@ io.on('connection', (socket) => {
   socket.on('addPeers', addPeers);
   socket.on('deletePeers', deletePeers);
   socket.on('device:get', getDevice);
-  socket.on('device:status', getDeviceStatus);
   socket.on('device:create', createDeviceProfile);
   socket.on('ports:get', getPorts);
   socket.on('device:addPorts', addPort);
@@ -70,9 +69,6 @@ io.on('connection', (socket) => {
 
 async function getDevice(cb?: (res: ConfigDeviceDto) => void) {
   return cb(configDevice);
-}
-
-async function getDeviceStatus(socket) {
 }
 
 async function getAllDevices(cb?: (res: any) => void) {
@@ -119,7 +115,7 @@ async function deleteDevices(cb?: (res: string) => void) {
   gun.get('DEVICES').get(configDevice._id.toString()).put(null);
   await configDB.deleteMany({});
   configDevice = undefined;
-  await plc.disconnect();
+  if (plc) await plc.disconnect();
   itemGroup = undefined;
   return cb('Device deleted!');
 }
@@ -173,11 +169,14 @@ async function sendDataToOtherDevice(deviceId: string, portName: string, port: s
   const certificate = await gun.get('certificates').get(deviceId).get(configDevice._id.toString()).then();
   if (certificate) device.get('memory').on(async (d) => {
     const devicePub = await gun.get('DEVICES').get(deviceId).get('pub').then();
-    const items = sea.encrypt(d, process.env.SECRET);
-
-    gun.user(devicePub).get('fromDevice').get('ports').put({ portName: items[portName] }, { opt: { cert: certificate } })
+    const items = await sea.decrypt(d, process.env.SECRET);
+    try {
+      gun.user(devicePub).get('fromDevice').get('ports').put({ portName: items[portName] }, null, { opt: { cert: certificate } })
+    } catch (err) {
+      console.log(err);
+    }
   })
-  else throw Error('Certificate not found');
+  // else throw Error('Certificate not found');
 }
 
 async function readDataFromOtherDevice() {
@@ -202,9 +201,9 @@ async function deletePeers(addr: string, cb?: (res: string) => void) {
 
 async function generateCertificate(sender: string, expiryTime: number, cb: (res: any) => void) {
   const senderP = await gun.get('DEVICES').get(sender);
-  const certificate = await sea.certify(senderP.epub, {"*": 'fromDevice'}, device._.sea, null, { expiry: expiryTime });
+  const certificate = await sea.certify(senderP.epub, {"*": 'fromDevice'}, device._.sea, null);
   gun.get('certificates').get(configDevice._id.toString()).get(sender).put(certificate);
-  return cb(certificate); 
+  return cb('Wygenerowano certyfikat!'); 
 }
 
 
@@ -215,8 +214,7 @@ async function generateCertificate(sender: string, expiryTime: number, cb: (res:
   if (configDevice) await authDevices();
   
   // gun.get('DEVICES').load(d => console.log(d));
-
-
+  gun.get('certificates').load(d => console.log(d));
 
 })();
 
@@ -232,22 +230,30 @@ authEmmiter.on('auth', async () => {
   itemGroup.addItems(Object.keys(ports));
 
   plc.on('error', e => {
-    if (globalSocket) globalSocket.emit('device:error', e);
+    if (intervals) clearInterval(intervals);
+    if (globalSocket) {
+      globalSocket.emit('device:error', e);
+      globalSocket.emit('device:connect', false);
+    }
     console.log('PLC Error!', e)
   });
   plc.on('disconnect', () => {
     if (globalSocket) globalSocket.emit('device:connect', false);
+    clearInterval(intervals);
     console.log('PLC Disconnect');
   });
   plc.on('connect', () => {
-    if (globalSocket) globalSocket.emit('device:connect', true);
     console.log('PLC Connect')
 
     intervals = setInterval(async () => {
       const items = await itemGroup.readAllItems();
       const encryptedItems = await sea.encrypt(items, process.env.SECRET);
       device.get('memory').put(encryptedItems);
-      if (globalSocket) globalSocket.emit('device:readValue', pipe(entries(items), map((p: [string, string]) => ({ portName: p[0], value: p[1] })), toarray()));
+      if (globalSocket) {
+        globalSocket.emit('device:readValue', pipe(entries(items), map((p: [string, string]) => ({ portName: p[0], value: p[1] })), toarray()));
+        globalSocket.emit('device:connect', true);
+        globalSocket.emit('device:error', null);
+      }
     }, configDevice.updateRate);
 
     putDataToDeviceFromDB();
