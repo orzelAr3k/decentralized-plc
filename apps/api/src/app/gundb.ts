@@ -30,9 +30,9 @@ export function deletePeer(addr: any): void {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const peers = gun.back('opt.peers');
+    
     const addrId = Object.keys(peers).find(id => peers[id] === addr);
     mesh.bye(addrId);
-    peersDB.deleteOne({ host: addr });
 }
 
 // generowanie certyfiaktu

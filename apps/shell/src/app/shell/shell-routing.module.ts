@@ -7,6 +7,8 @@ import { ShellComponent } from './shell.component';
 import { DevicesComponent } from './devices/devices.component';
 import { NetworkComponent } from './network/network.component';
 import { PortsComponent } from './ports/ports.component';
+import { PeersComponent } from './peers/peers.component';
+import { ChartsComponent } from './charts/charts.component';
 
 
 const routes: Routes = [
@@ -15,7 +17,9 @@ const routes: Routes = [
     [
       { path: 'devices', component: DevicesComponent },
       { path: 'ports', component: PortsComponent },
-      { path: 'network', component: NetworkComponent }
+      { path: 'network', component: NetworkComponent },
+      { path: 'peers', component: PeersComponent },
+      { path: 'charts', component: ChartsComponent }
     ] 
   },
 ];

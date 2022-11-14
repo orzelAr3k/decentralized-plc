@@ -34,6 +34,8 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
               <li><a routerLink="devices" routerLinkActive="active">Urządzenie</a></li>
               <li><a routerLink="ports" routerLinkActive="active">Porty</a></li>
               <li><a routerLink="network" routerLinkActive="active">Sieć</a></li>
+              <li><a routerLink="peers" routerLinkActive="active">Peers</a></li>
+              <li><a routerLink="charts" routerLinkActive="active">Wizualizacja</a></li>
             </ul>
             <button class="btn" (click)="logout()">Wyloguj</button>
           </div>
@@ -52,6 +54,8 @@ import { NgGunService } from '@decentralized-plc/ng-gun';
           <li><a routerLink="devices" routerLinkActive="active">Urządzenie</a></li>
           <li><a routerLink="ports" routerLinkActive="active">Porty</a></li>          
           <li><a routerLink="network" routerLinkActive="active">Sieć</a></li>
+          <li><a routerLink="peers" routerLinkActive="active">Peers</a></li>
+          <li><a routerLink="charts" routerLinkActive="active">Wizualizacja</a></li>
           <li class="justify-self-end mt-auto"><button class="btn" (click)="logout()">Wyloguj</button></li>
         </ul>
       </div>

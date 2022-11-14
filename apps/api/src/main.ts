@@ -47,6 +47,7 @@ server.on('error', console.error);
 io.on('connection', (socket) => {
   globalSocket = socket;
   console.log('Welcome: ' + socket.id);
+  socket.on('getPeers', getPeers);
   socket.on('addPeers', addPeers);
   socket.on('deletePeers', deletePeers);
   socket.on('device:get', getDevice);
@@ -184,7 +185,9 @@ async function readDataFromOtherDevice() {
 }
 
 
-
+async function getPeers(cb: (res: string[]) => void) {
+  return cb(await peersDB.find().toArray());
+}
 
 
 async function addPeers(addr: string, cb?: (res: string) => void) { 
@@ -195,7 +198,7 @@ async function addPeers(addr: string, cb?: (res: string) => void) {
 
 async function deletePeers(addr: string, cb?: (res: string) => void) {
   deletePeer(addr);
-  peersDB.deleteOne({ host: addr });
+  // peersDB.deleteOne({ host: addr });
   return cb('Peer deleted!');
 };
 
@@ -212,9 +215,11 @@ async function generateCertificate(sender: string, expiryTime: number, cb: (res:
   const peers = await peersDB.find({}).project({ _id: 0, host: 1 }).toArray();
   if (peers.length > 0) peers.forEach(peer => addPeer(peer.host));
   if (configDevice) await authDevices();
+
   
-  // gun.get('DEVICES').load(d => console.log(d));
+  gun.get('DEVICES').load(d => console.log(d));
   gun.get('certificates').load(d => console.log(d));
+
 
 })();
 
@@ -235,7 +240,7 @@ authEmmiter.on('auth', async () => {
       globalSocket.emit('device:error', e);
       globalSocket.emit('device:connect', false);
     }
-    console.log('PLC Error!', e)
+    // console.log('PLC Error!', e)
   });
   plc.on('disconnect', () => {
     if (globalSocket) globalSocket.emit('device:connect', false);
