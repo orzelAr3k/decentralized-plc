@@ -1,32 +1,35 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Socket } from 'ngx-socket-io';
-import { Observable } from 'rxjs';
+import { DeviceService } from './device.service';
+import { lastValueFrom } from 'rxjs';
+
 
 @Component({
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  providers: [DeviceService],
   selector: 'shell-devices',
   template: `
-   <div class='container h-92v flex'>
+   <div class='container h-80v flex'>
     <div class="m-auto">
-      <div *ngIf="empty" (click)="showModal()"><label class="btn modal-button" for="my-modal">Dodaj urządzenie</label></div>
-
+      <label *ngIf="empty" class="btn modal-button" for="my-modal" (click)="showModal()">Dodaj urządzenie</label>
       <div class="hero" *ngIf="!empty">
         <div class="hero-content flex-col lg:flex-row">
           <img src="../../../assets/plc.png" class="max-w-sm rounded-lg shadow-2xl" />
           <div>
-            <h1 class="text-5xl font-bold">{{ device.name }}</h1>
-            <p class="py-6">Host: {{ device.host }}</p>
-            <p class="py-6" *ngIf="connect$ | async; let connect">Connect: {{ connect }}</p>
-            <p></p>
-            <button class="btn btn-primary" (click)="deleteDevice()">Usuń urządzenie</button>
+            <h1 class="mb-6 text-5xl font-bold">{{ device.name }}</h1>
+            <p class="my-1">Host: {{ device.host }}</p>
+            <p>Odświażanie: {{ device.updateRate }} ms</p>
+            <p class="py-3 text-2xl" [ngClass]="{'text-red-800': (connect$ | async) === false, 'text-green-400': (connect$ | async)}">Status: {{ (connect$ | async) ? 'Aktywny' : 'Nieaktywny' }}</p>
+            <button class="btn btn-primary mt-6" (click)="deleteDevice()">Usuń urządzenie</button>
           </div>
         </div>
       </div>
-      
+      <span *ngIf="error$ | async; let error">{{ error | json }}</span>
     </div>
   </div>
-  <span *ngIf="error$ | async; let error">{{ error | json }}</span>
-
-
 
   <!-- modal -->
   <input type="checkbox" id="my-modal" class="modal-toggle" />
@@ -34,7 +37,7 @@ import { Observable } from 'rxjs';
     <div class="modal-box relative">
       <label for="my-modal" class="btn btn-sm btn-circle absolute right-2 top-2" (click)="closeModal()">✕</label>
       <h3 class="text-lg font-bold">Dodaj urządzenie</h3>
-      <form #deviceForm="ngForm" class="rounded-lg p-10 bg-slate-800">
+      <form #deviceForm="ngForm" class="rounded-lg p-10 bg-base-200">
         <div class="form-control mb-6">
           <label class="label">
             <span class="label-text">Nazwa urządzenia *</span>
@@ -122,33 +125,28 @@ export class DevicesComponent implements OnInit {
   };
   empty = true;
   modal = false;
-  error$ = this.socket.fromEvent('device:error');
-  connect$ = this.socket.fromEvent('device:connect');
+  error$ = this.deviceService.deviceError();
+  connect$ = this.deviceService.deviceConnect();
 
-  constructor(private socket: Socket) { }
+  constructor(private deviceService: DeviceService) { }
 
   ngOnInit(): void { 
-    this.getDevice();
-  }
-
-  getDevice() {
-    this.socket.emit('device:get', (device: ConfigDeviceDto) => {
+    this.deviceService.getDevice((device: ConfigDeviceDto) => {
       if (device) {
         this.device = device
         this.empty = false;
       }
     });
-
   }
 
   addDevice() {
     this.modal = false;
-    this.socket.emit('device:create', this.device.name, this.device.host, this.device.rack, this.device.slot, this.device.updateRate, (d: string | null) => console.log(d));
+    this.deviceService.addDevice(this.device.name, this.device.host, this.device.rack, this.device.slot, this.device.updateRate);
     this.empty = false;
   }
 
   deleteDevice() {
-    this.socket.emit('device:delete', (d: any) => console.log(d));
+    this.deviceService.deleteDevice();
     this.device = {} as ConfigDeviceDto;
     this.empty = true;
   }

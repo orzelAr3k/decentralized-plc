@@ -1,14 +1,20 @@
 import { Component, OnInit } from '@angular/core';
-import { Socket } from 'ngx-socket-io';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Enumerable, foreach  } from 'powerseq/enumerable';
+import { PortsService } from './ports.service'; 
+import { ShellToastService } from '../toasts/shell-toast.service';
 
 
 @Component({
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  providers: [PortsService],
   selector: 'decentralized-plc-ports',
   template: `
-    <nav>
-      <button class="btn modal-button" (click)="showModal()"><label  for="my-modal">Dodaj port</label></button>
-    </nav>
+    <div class="mb-6">
+      <label class="btn modal-button" for="my-modal" (click)="showModal()">Dodaj port</label>
+    </div>
     <div class="overflow-x-auto w-full">
       <table class="table w-full">
         <!-- head -->
@@ -27,60 +33,56 @@ import { Enumerable, foreach  } from 'powerseq/enumerable';
           </tr>
         </thead>
         <tbody *ngIf="portsList">
-          <!-- row 1 -->
-
-            <tr *ngFor="let portName of getPortsName(); let i = index">
-              <th>
-                <label>
-                  <input type="checkbox" class="checkbox" />
-                </label>
-              </th>
-              <td>
-                <div class="flex items-center space-x-3">
-                  <!-- <div class="avatar">
-                    <div class="mask mask-squircle w-12 h-12">
-                    </div>
-                  </div> -->
-                  <div>
-                    <div class="font-bold">{{ portName }}</div>
-                    <div class="text-sm opacity-50">United States</div>
+          <tr *ngFor="let portName of getPortsName(); let i = index">
+            <th>
+              <label>
+                <input type="checkbox" class="checkbox" />
+              </label>
+            </th>
+            <td>
+              <div class="flex items-center space-x-3">
+                <!-- <div class="avatar">
+                  <div class="mask mask-squircle w-12 h-12">
                   </div>
+                </div> -->
+                <div>
+                  <div class="font-bold">{{ portName }}</div>
+                  <!-- <div class="text-sm opacity-50">United States</div> -->
                 </div>
-              </td>
-              <td>
-                {{ portsList[portName].port }}
-                <br>
-                <span class="badge badge-ghost badge-sm">Desktop Support Technician</span>
-              </td>
-              <td>{{ portsList[portName].value }}</td>
-              <td>
-                <div class="flex content-between gap-4">
-                  <input type="text" placeholder="Nowa wartość" class="input input-bordered input-sm w-full max-w-xs" [(ngModel)]="portNewValues[i]" (keydown.enter)="forceValue(portName, i)">
-                  <button class="btn btn-sm btn-outline" (click)="forceValue(portName, i)">Prześlij</button>
-                </div>
-              </td>
-              <th>
-                <button class="btn btn-ghost btn-sm" (click)="deletePort(portName)">Usuń</button>
-              </th>
-            </tr>
-
-        </tbody>
-        <!-- foot -->
-        <tfoot>
-          <tr>
-            <th></th>
-            <th>Nazwa</th>
-            <th>Port</th>
-            <th>Wartość</th>
-            <th></th>
-            <th></th>
+              </div>
+            </td>
+            <td>
+              {{ portsList[portName].port }}
+              <!-- <br>
+              <span class="badge badge-ghost badge-sm">Desktop Support Technician</span> -->
+            </td>
+            <td>{{ portsList[portName].value ?? '-' }}</td>
+            <td>
+              <div class="flex content-between gap-4">
+                <input type="text" placeholder="Nowa wartość" class="input input-bordered input-sm w-full max-w-xs" [(ngModel)]="portNewValues[i]" (keydown.enter)="forceValue(portName, i)">
+                <button class="btn btn-sm btn-outline" (click)="forceValue(portName, i)">Prześlij</button>
+              </div>
+            </td>
+            <th>
+              <button class="btn btn-ghost btn-sm" (click)="deletePort(portName)">Usuń</button>
+            </th>
           </tr>
-        </tfoot>
-        
-      </table>
-    </div>
+      </tbody>
+      <!-- foot -->
+      <tfoot>
+        <tr>
+          <th></th>
+          <th>Nazwa</th>
+          <th>Port</th>
+          <th>Wartość</th>
+          <th></th>
+          <th></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 
-    <!-- modal -->
+  <!-- modal -->
   <input type="checkbox" id="my-modal" class="modal-toggle" />
   <div class="modal" *ngIf="modal">
     <div class="modal-box relative">
@@ -125,26 +127,23 @@ import { Enumerable, foreach  } from 'powerseq/enumerable';
 })
 export class PortsComponent implements OnInit {
   portsList: { [key: string]: { port: string, value: any } };
-
   portName: string | undefined;
   port: string | undefined;
   portNewValues: any = {};
-
   modal = false;
-
   error;
 
-  constructor(private socket: Socket) {}
+  constructor(private portsService: PortsService, private toastService: ShellToastService) {}
 
   ngOnInit(): void {
     this.getPorts();
-    this.socket.fromEvent('device:readValue').subscribe((portsValue: { portName: string, value: any}[]) => {
+    this.portsService.getPortsValues().subscribe((portsValue: { portName: string, value: any}[]) => {
       Enumerable.from(portsValue).foreach((v) => this.portsList[v.portName].value = v.value);
     })
   }
 
   getPorts() {
-    this.socket.emit('ports:get', (ports: any) => { this.portsList = ports });
+    this.portsService.getPorts((ports => this.portsList = ports));
   }
 
   getPortsName() {
@@ -152,7 +151,7 @@ export class PortsComponent implements OnInit {
   }
 
   addPort() {
-    this.socket.emit('device:addPorts', this.portName, this.port, p => console.log(p));
+    this.portsService.addPort(this.portName, this.port);
     this.getPorts();
     this.portName = undefined;
     this.port = undefined;
@@ -160,12 +159,12 @@ export class PortsComponent implements OnInit {
   }
 
   deletePort(portName: string) {
-    this.socket.emit('device:deletePorts', portName, p => console.log(p));
+    this.portsService.deletePort(portName);
     this.getPorts();
   }
 
   forceValue(portName: string, index: number) {
-    this.socket.emit('portValue:put', portName, JSON.parse(this.portNewValues[index]), p => console.log(p));
+    this.portsService.forceValue(this.portNewValues, portName, index);
     delete this.portNewValues[index];
   }
 
